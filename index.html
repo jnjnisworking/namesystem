@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mr.Ng的摘名系統</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 15px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #1a73e8;
+            margin-bottom: 25px;
+        }
+        /* 大框佈局 */
+        .main-box {
+            background: white;
+            border: 2px solid #ccc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .tick-box { border-left: 8px solid #28a745; }
+        .cross-box { border-left: 8px solid #dc3545; }
+        
+        .box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .box-title {
+            font-size: 22px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tick-icon { color: #28a745; }
+        .cross-icon { color: #dc3545; }
+        
+        /* 增加按鈕 */
+        .add-btn {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .add-btn:hover { background: #1557b0; }
+        .add-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        /* 結果顯示區（裡面的號碼可點擊） */
+        .result-display {
+            font-size: 18px;
+            min-height: 40px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* 可點擊取消的學號標籤 */
+        .clickable-tag {
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+        .clickable-tag:hover {
+            background-color: #ff0000 !important;
+            color: white !important;
+            text-decoration: line-through;
+        }
+
+        /* 彈出選號表 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+        }
+        .student-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        .student-btn {
+            padding: 10px 5px;
+            font-size: 16px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .student-btn:hover { background: #e2e6ea; }
+        .close-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* 警告等級顏色定義 */
+        .num-black { color: #000000; font-weight: bold; background: #e2e3e5; }
+        .num-yellow { color: #856404; font-weight: bold; background: #fff3cd; }
+        .num-red { color: #721c24; font-weight: bold; background: #f8d7da; border: 1px solid #f5c6cb; }
+
+        /* 歷史紀錄框 */
+        .history-box {
+            background: #e9ecef;
+            border: 2px dashed #999;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .history-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        input[type="date"] {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .history-list {
+            margin-top: 10px;
+            font-size: 18px;
+            color: #dc3545;
+            font-weight: bold;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📋 Mr.Ng的摘名系統</h1>
+
+    <div class="main-box tick-box">
+        <div class="box-header">
+            <div class="box-title"><span class="tick-icon">✔️</span> Tick 紀錄 (每日限1次)</div>
+            <button class="add-btn" id="tickAddBtn" onclick="openModal('tick')">+ 登記</button>
+        </div>
+        <div class="result-display" id="tickDisplay"></div>
+    </div>
+
+    <div class="main-box cross-box">
+        <div class="box-header">
+            <div class="box-title"><span class="cross-icon">❌</span> 交叉警告紀錄 (最多3次)</div>
+            <button class="add-btn" id="crossAddBtn" onclick="openModal('cross')">+ 登記警告</button>
+        </div>
+        <div class="result-display" id="crossDisplay"></div>
+    </div>
+
+    <div class="history-box">
+        <div class="history-title">🔍 歷史紀錄查詢</div>
+        <input type="date" id="historyDate" onchange="loadHistoryData()">
+        <div>
+            <strong>⚠️ 該日累積滿 3 次警告(最終記名)的學號：</strong>
+            <div id="historyDisplay" class="history-list">請選擇日子...</div>
+        </div>
+    </div>
+
+    <div class="modal" id="numberModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">請選取學號 (1-45)</h3>
+            <div class="student-grid" id="studentGrid"></div>
+            <button class="close-btn" onclick="closeModal()">關閉</button>
+        </div>
+    </div>
+
+<script>
+    let currentMode = ''; 
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 初始化資料結構：cross 改為紀錄物件陣列，方便追蹤每個號碼被按了幾次
+    // 格式：{ tick: null, cross: [號碼1, 號碼2, 號碼3] } 依序代表第1、2、3次警告
+    let todayData = JSON.parse(localStorage.getItem('ngSystem_' + todayStr)) || { tick: null, cross: [] };
+
+    window.onload = function() {
+        document.getElementById('historyDate').value = todayStr;
+        renderTodayDisplay();
+        loadHistoryData();
+    };
+
+    // 渲染主介面
+    function renderTodayDisplay() {
+        // --- 1. 渲染 Tick 框 ---
+        const tickDisp = document.getElementById('tickDisplay');
+        const tickAddBtn = document.getElementById('tickAddBtn');
+        
+        if (todayData.tick) {
+            tickDisp.innerHTML = `<span class="clickable-tag num-black" onclick="removeTick()" title="點擊取消紀錄">${todayData.tick} 號 (點擊取消)</span>`;
+            tickAddBtn.disabled = true; // 已有紀錄，禁用按鈕
+        } else {
+            tickDisp.innerHTML = `<span style="color:#999; font-style:italic;">今日尚未登記</span>`;
+            tickAddBtn.disabled = false;
+        }
+
+        // --- 2. 渲染 Cross 交叉框 ---
+        const crossDisp = document.getElementById('crossDisplay');
+        const crossAddBtn = document.getElementById('crossAddBtn');
+        
+        if (todayData.cross.length > 0) {
+            crossDisp.innerHTML = todayData.cross.map((num, index) => {
+                let colorClass = 'num-black';  // 第一次：黑色
+                let label = '第一次警告';
+                if (index === 1) { colorClass = 'num-yellow'; label = '第二次警告'; }
+                if (index === 2) { colorClass = 'num-red'; label = '最終記名'; }
+                
+                return `<span class="clickable-tag ${colorClass}" onclick="removeCross(${index})" title="點擊取消此條紀錄">${num} 號 (${label})</span>`;
+            }).join(' ➔ ');
+        } else {
+            crossDisp.innerHTML = `<span style="color:#999; font-style:italic;">今日轉換為警告模式...</span>`;
+        }
+
+        // 滿 3 次就禁用增加按鈕
+        crossAddBtn.disabled = todayData.cross.length >= 3;
+    }
+
+    // 打開選擇學號視窗
+    function openModal(mode) {
+        currentMode = mode;
+        const modal = document.getElementById('numberModal');
+        const title = document.getElementById('modalTitle');
+        const grid = document.getElementById('studentGrid');
+        grid.innerHTML = '';
+
+        if (mode === 'tick') {
+            title.innerText = "✔️ 選擇 Tick 學號";
+        } else {
+            const currentCount = todayData.cross.length;
+            let levelStr = currentCount === 0 ? "第一次警告 - 黑色" : currentCount === 1 ? "第二次警告 - 黃色" : "最終記名 - 紅色";
+            title.innerText = `❌ 登記警告 (第 ${currentCount + 1} 次：${levelStr})`;
+        }
+
+        // 產生 1 至 45 號按鈕
+        for (let i = 1; i <= 45; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'student-btn';
+            btn.innerText = i + '號';
+            btn.onclick = () => selectNumber(i);
+            grid.appendChild(btn);
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('numberModal').style.display = 'none';
+    }
+
+    // 選擇號碼寫入
+    function selectNumber(num) {
+        if (currentMode === 'tick') {
+            todayData.tick = num;
+        } else {
+            todayData.cross.push(num);
+        }
+
+        saveToLocalStorage();
+        renderTodayDisplay();
+        loadHistoryData(); 
+        closeModal();
+    }
+
+    // 【取消機制】取消 Tick 紀錄
+    function removeTick() {
+        if (confirm(`確定要取消 ${todayData.tick} 號的 Tick 紀錄嗎？`)) {
+            todayData.tick = null;
+            saveToLocalStorage();
+            renderTodayDisplay();
+            loadHistoryData();
+        }
+    }
+
+    // 【取消機制】取消 Cross 警告紀錄
+    function removeCross(index) {
+        const targetNum = todayData.cross[index];
+        let label = index === 0 ? '第一次(黑色)' : index === 1 ? '第二次(黃色)' : '第三次(紅色)';
+        
+        if (confirm(`確定要取消第 ${index + 1} 次登記的 ${targetNum} 號 [${label}] 紀錄嗎？\n(注意：取消後後續的警告順序會遞補)`)) {
+            // 刪除該筆紀錄
+            todayData.cross.splice(index, 1);
+            saveToLocalStorage();
+            renderTodayDisplay();
+            loadHistoryData();
+        }
+    }
+
+    // 儲存資料到本地
+    function saveToLocalStorage() {
+        localStorage.setItem('ngSystem_' + todayStr, JSON.stringify(todayData));
+    }
+
+    // 歷史紀錄調取
+    function loadHistoryData() {
+        const targetDate = document.getElementById('historyDate').value;
+        const historyDisp = document.getElementById('historyDisplay');
+        
+        if (!targetDate) return;
+
+        const historyData = JSON.parse(localStorage.getItem('ngSystem_' + targetDate));
+
+        // 如果當天有填滿 3 次警告，撈出第3個（索引值為 2）變紅色的學號
+        if (historyData && historyData.cross && historyData.cross.length >= 3) {
+            const finalRedNum = historyData.cross[2];
+            historyDisp.innerHTML = `<span class="num-red" style="padding: 5px 15px; border-radius:6px;">🎓 ${finalRedNum} 號 最終記名</span>`;
+        } else {
+            historyDisp.innerHTML = `<span style="color: #6c757d; font-style: italic; font-size: 16px; font-weight: normal;">該日子沒有累積滿 3 次警告(紅色)的學號</span>`;
+        }
+    }
+</script>
+
+</body>
+</html>
