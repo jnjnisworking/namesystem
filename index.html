@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr.Ng的摘名系統 - 長音效威嚴版</title>
+    <title>Mr.Ng的摘名系統 - 斯文音效版</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -185,13 +185,11 @@
 </head>
 <body>
 
-    <!-- 頂部標題與清空按鈕 -->
     <div class="header-container">
         <h1>📋 Mr.Ng的摘名系統</h1>
         <button class="clear-all-btn" onclick="clearTodayAll()">🧹 清空今日紀錄</button>
     </div>
 
-    <!-- 乖 大框 -->
     <div class="main-box good-box">
         <div class="box-header">
             <div class="box-title"><span class="good-icon">👍</span> 「乖」紀錄 (可多選)</div>
@@ -200,7 +198,6 @@
         <div class="result-display" id="goodDisplay"></div>
     </div>
 
-    <!-- 摘名 大框 -->
     <div class="main-box bad-box">
         <div class="box-header">
             <div class="box-title"><span class="bad-icon">⚠️</span> 「摘名」警告紀錄 (獨立累計顏色)</div>
@@ -209,7 +206,6 @@
         <div class="result-display" id="badDisplay"></div>
     </div>
 
-    <!-- 歷史紀錄小框 -->
     <div class="history-box">
         <div class="history-title">🔍 歷史紀錄查詢</div>
         <input type="date" id="historyDate" onchange="loadHistoryData()">
@@ -219,7 +215,6 @@
         </div>
     </div>
 
-    <!-- 彈出選號表 -->
     <div class="modal" id="numberModal">
         <div class="modal-content">
             <h3 id="modalTitle">請選取學號 (1-45)</h3>
@@ -257,46 +252,41 @@
         } catch (e) { console.log(e); }
     }
 
-    // 🚨 Level 1 警報：低沉雙音交替（持續約 3 秒）
+    // 🚨 Level 1 警報：低沉雙音交替（約 3 秒，調小了音量）
     function playLevel1Alert() {
         initAudio();
         var now = audioCtx.currentTime;
-        // 循環播放 4 次，每次 0.7 秒 (0.4秒響, 0.3秒靜音) ➔ 總長約 2.8 秒
         for (var i = 0; i < 4; i++) {
             var startTime = now + (i * 0.7);
-            
             var osc = audioCtx.createOscillator();
             var gain = audioCtx.createGain();
-            osc.type = 'sawtooth';
-            // 奇數次和偶數次發出不同頻率，形成「嗶波、嗶波」效果
-            osc.frequency.setValueAtTime(i % 2 === 0 ? 400 : 340, startTime);
+            osc.type = 'sine'; // 改用溫和的正弦波
+            osc.frequency.setValueAtTime(i % 2 === 0 ? 380 : 320, startTime);
             
-            gain.gain.setValueAtTime(0.08, startTime);
-            gain.gain.setValueAtTime(0.08, startTime + 0.35);
-            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.4);
+            gain.gain.setValueAtTime(0.06, startTime);
+            gain.gain.setValueAtTime(0.06, startTime + 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.35);
             
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(startTime);
-            osc.stop(startTime + 0.4);
+            osc.stop(startTime + 0.35);
         }
     }
 
-    // 🚨 Level 2 警報：高頻密集機槍音（持續約 4 秒）
+    // 🚨 Level 2 警報：中頻密集提示音（約 4 秒）
     function playLevel2Alert() {
         initAudio();
         var now = audioCtx.currentTime;
-        // 每 0.22 秒響一次，共響 18 次 ➔ 總長約 4 秒
-        for (var i = 0; i < 18; i++) {
-            var startTime = now + (i * 0.22);
-            
+        for (var i = 0; i < 14; i++) {
+            var startTime = now + (i * 0.28);
             var osc = audioCtx.createOscillator();
             var gain = audioCtx.createGain();
-            osc.type = 'triangle'; // 三角波聽起來帶有尖銳的數位感
-            osc.frequency.setValueAtTime(620, startTime);
+            osc.type = 'sine'; // 改用正弦波，聽起來像倒數提示音，比較不刺耳
+            osc.frequency.setValueAtTime(520, startTime);
             
-            gain.gain.setValueAtTime(0.12, startTime);
-            gain.gain.setValueAtTime(0.12, startTime + 0.1);
+            gain.gain.setValueAtTime(0.08, startTime);
+            gain.gain.setValueAtTime(0.08, startTime + 0.1);
             gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.12);
             
             osc.connect(gain);
@@ -306,57 +296,55 @@
         }
     }
 
-    // 🚨 Level 3 警報：防空警報/核災級終極巨響拉哨音（持續整整 5 秒！）
+    // 🚨 Level 3 警報：優雅、嚴肅的「高低雙音叮咚」循環（持續約 4-5 秒）
+    // 聽起來像高鐵或機場的正式廣播提示音，提醒全班「注意，已正式記名」
     function playLevel3Alert() {
-        try {
-            initAudio();
-            var now = audioCtx.currentTime;
-            var duration = 5.0; // 5秒
-
-            var osc = audioCtx.createOscillator();
-            var gain = audioCtx.createGain();
+        initAudio();
+        var now = audioCtx.currentTime;
+        
+        // 循環播放 3 次「叮咚」➔ 每次間隔 1.3 秒，總共約 4.2 秒
+        for (var i = 0; i < 3; i++) {
+            var baseTime = now + (i * 1.3);
             
-            osc.type = 'square'; // 方波威脅感與穿透力最強
+            // 1.「叮」高音 (550Hz)
+            var oscHigh = audioCtx.createOscillator();
+            var gainHigh = audioCtx.createGain();
+            oscHigh.type = 'sine';
+            oscHigh.frequency.setValueAtTime(550, baseTime);
+            gainHigh.gain.setValueAtTime(0.12, baseTime);
+            gainHigh.gain.exponentialRampToValueAtTime(0.0001, baseTime + 0.4);
+            oscHigh.connect(gainHigh);
+            gainHigh.connect(audioCtx.destination);
+            oscHigh.start(baseTime);
+            oscHigh.stop(baseTime + 0.4);
             
-            // 設定初始頻率
-            osc.frequency.setValueAtTime(350, now);
-            
-            // 在 5 秒內，音調像拉哨一樣上下劇烈震盪 4 個來回 (350Hz ➔ 950Hz ➔ 350Hz)
-            for (var t = 0; t <= duration; t += 0.6) {
-                if (t === 0) continue;
-                var targetFreq = (Math.round(t / 0.6) % 2 === 1) ? 950 : 350;
-                osc.frequency.linearRampToValueAtTime(targetFreq, now + t);
-            }
-            // 最後 0.2 秒平滑結尾
-            osc.frequency.linearRampToValueAtTime(300, now + duration);
-
-            // 音量控制：開頭淡入，結尾淡出
-            gain.gain.setValueAtTime(0.001, now);
-            gain.gain.linearRampToValueAtTime(0.18, now + 0.3); // 快速淡入到最大音量
-            gain.gain.setValueAtTime(0.18, now + duration - 0.4);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration); // 結尾漸弱
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start(now);
-            osc.stop(now + duration);
-        } catch (e) { console.log(e); }
+            // 2.「咚」低音 (440Hz)，比高音慢 0.25 秒響起
+            var oscLow = audioCtx.createOscillator();
+            var gainLow = audioCtx.createGain();
+            oscLow.type = 'sine';
+            oscLow.frequency.setValueAtTime(440, baseTime + 0.25);
+            gainLow.gain.setValueAtTime(0.12, baseTime + 0.25);
+            gainLow.gain.exponentialRampToValueAtTime(0.0001, baseTime + 0.25 + 0.5);
+            oscLow.connect(gainLow);
+            gainLow.connect(audioCtx.destination);
+            oscLow.start(baseTime + 0.25);
+            oscLow.stop(baseTime + 0.25 + 0.5);
+        }
     }
 
     // 🔊 音效總控制器
     function triggerSound(mode, currentCount) {
         if (mode === 'good') {
-            // 👍 「乖」音效：維持清脆一聲「叮！」
-            playTone(880, 'sine', 0.18, 0.12);
+            // 👍 「乖」音效：清脆一聲「叮！」
+            playTone(880, 'sine', 0.15, 0.08);
         } else {
             // ⚠️ 「摘名」長音效階梯
             if (currentCount === 1) {
-                playLevel1Alert(); // Level 1 (3秒)
+                playLevel1Alert(); // Level 1 (溫和嗶波 3秒)
             } else if (currentCount === 2) {
-                playLevel2Alert(); // Level 2 (4秒)
+                playLevel2Alert(); // Level 2 (規律倒數 4秒)
             } else if (currentCount >= 3) {
-                playLevel3Alert(); // Level 3 終極版 (5秒)
+                playLevel3Alert(); // Level 3 (優雅嚴肅叮咚 4.5秒)
             }
         }
     }
