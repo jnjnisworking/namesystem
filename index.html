@@ -13,11 +13,33 @@
             background-color: #f0f2f5;
             color: #333;
         }
-        h1 {
-            text-align: center;
-            color: #1a73e8;
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 25px;
         }
+        h1 {
+            color: #1a73e8;
+            margin: 0;
+            font-size: 26px;
+        }
+        /* 清空按鈕樣式 */
+        .clear-all-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .clear-all-btn:hover {
+            background-color: #bd2130;
+        }
+        
         /* 大框佈局 */
         .main-box {
             background: white;
@@ -170,11 +192,14 @@
 </head>
 <body>
 
-    <h1>📋 Mr.Ng的摘名系統</h1>
+    <div class="header-container">
+        <h1>📋 Mr.Ng的摘名系統</h1>
+        <button class="clear-all-btn" onclick="clearTodayAll()">🧹 清空今日紀錄</button>
+    </div>
 
     <div class="main-box good-box">
         <div class="box-header">
-            <div class="box-title"><span class="good-icon">👍</span> 「乖」紀錄紀錄 (可多選)</div>
+            <div class="box-title"><span class="good-icon">👍</span> 「乖」紀錄 (可多選)</div>
             <button class="add-btn" onclick="openModal('good')">+ 登記表現好</button>
         </div>
         <div class="result-display" id="goodDisplay"></div>
@@ -210,8 +235,6 @@
     const todayStr = new Date().toISOString().split('T')[0];
 
     // 初始化資料結構
-    // good: [學號, 學號...]
-    // bad: { "學號": 次數 } 例如 { "5": 2 } 代表5號被摘了兩次名
     let todayData = JSON.parse(localStorage.getItem('ngSystem_v2_' + todayStr)) || { good: [], bad: {} };
 
     window.onload = function() {
@@ -266,7 +289,6 @@
             const btn = document.createElement('button');
             btn.className = 'student-btn';
             
-            // 如果是摘名模式，按鈕上貼心提示當前累積狀況
             if (mode === 'bad' && todayData.bad[i]) {
                 const currentCount = todayData.bad[i];
                 btn.innerText = `${i}號 (${currentCount}次)`;
@@ -289,16 +311,13 @@
     // 選取號碼後的處理邏輯
     function selectNumber(num) {
         if (currentMode === 'good') {
-            // 「乖」欄位允許重複加分（例如一堂課讚賞兩次），若不想重複可在此改寫
             todayData.good.push(num);
-            // 排序讓畫面好看點
             todayData.good.sort((a, b) => a - b);
         } else {
-            // 「摘名」欄位：獨立計數，最高到3次（或以上）
             if (!todayData.bad[num]) {
-                todayData.bad[num] = 1; // 第一次：黑色
+                todayData.bad[num] = 1;
             } else {
-                todayData.bad[num] += 1; // 第二次黃色、第三次紅色
+                todayData.bad[num] += 1;
             }
         }
 
@@ -318,7 +337,7 @@
         }
     }
 
-    // 【取消機制】取消「摘名」紀錄（扣減一次警告）
+    // 【取消機制】取消「摘名」紀錄
     function removeBad(num) {
         const currentCount = todayData.bad[num];
         let statusStr = currentCount === 1 ? "第一次(黑色)" : currentCount === 2 ? "第二次(黃色)" : "第三次(紅色)";
@@ -326,7 +345,7 @@
         if (confirm(`確定要取消 ${num} 號的這一層 [${statusStr}] 摘名紀錄嗎？\n(確認後會退回上一個警告狀態)`)) {
             todayData.bad[num] -= 1;
             if (todayData.bad[num] <= 0) {
-                delete todayData.bad[num]; // 完全清除
+                delete todayData.bad[num];
             }
             saveToLocalStorage();
             renderTodayDisplay();
@@ -334,11 +353,23 @@
         }
     }
 
+    // 🔥【全新功能】一鍵清空今日所有紀錄
+    function clearTodayAll() {
+        if (confirm("⚠️ 確定要完全清空今天的『乖』和『摘名』紀錄嗎？\n此操作會抹除今天的所有輸入，且無法復原！")) {
+            // 重設為空結構
+            todayData = { good: [], bad: {} };
+            saveToLocalStorage();
+            renderTodayDisplay();
+            loadHistoryData(); // 同步更新下方顯示
+            alert("🧹 今天的紀錄已全部清空！");
+        }
+    }
+
     function saveToLocalStorage() {
         localStorage.setItem('ngSystem_v2_' + todayStr, JSON.stringify(todayData));
     }
 
-    // 歷史紀錄調取：找出所有累積滿 3 次（紅色）的學號
+    // 歷史紀錄調取
     function loadHistoryData() {
         const targetDate = document.getElementById('historyDate').value;
         const historyDisp = document.getElementById('historyDisplay');
@@ -348,11 +379,9 @@
         const historyData = JSON.parse(localStorage.getItem('ngSystem_v2_' + targetDate));
 
         if (historyData && historyData.bad) {
-            // 過濾出所有大於等於 3 次的學號
             const redList = Object.keys(historyData.bad).filter(num => historyData.bad[num] >= 3);
             
             if (redList.length > 0) {
-                // 將學號排序
                 redList.sort((a, b) => a - b);
                 historyDisp.innerHTML = redList.map(num => {
                     return `<span class="status-red" style="padding: 5px 12px; border-radius:6px; font-weight:bold;">🎓 ${num} 號</span>`;
