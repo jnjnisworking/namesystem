@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr.Ng的摘名系統 - 終極音效版</title>
+    <title>Mr.Ng的摘名系統 - 長音效威嚴版</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -240,7 +240,7 @@
         }
     }
 
-    // 發聲基礎通用函數
+    // 基礎單音函數
     function playTone(frequency, type, duration, volume) {
         try {
             initAudio();
@@ -254,55 +254,109 @@
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
-        } catch (e) {
-            console.log(e);
-        }
+        } catch (e) { console.log(e); }
     }
 
-    // 🚨 專為第 3 次變紅設計的「極度緊急拉哨警報聲」
-    function playUrgentSiren() {
-        try {
-            initAudio();
+    // 🚨 Level 1 警報：低沉雙音交替（持續約 3 秒）
+    function playLevel1Alert() {
+        initAudio();
+        var now = audioCtx.currentTime;
+        // 循環播放 4 次，每次 0.7 秒 (0.4秒響, 0.3秒靜音) ➔ 總長約 2.8 秒
+        for (var i = 0; i < 4; i++) {
+            var startTime = now + (i * 0.7);
+            
             var osc = audioCtx.createOscillator();
             var gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            // 奇數次和偶數次發出不同頻率，形成「嗶波、嗶波」效果
+            osc.frequency.setValueAtTime(i % 2 === 0 ? 400 : 340, startTime);
             
-            // 使用 square (方波) 聽起來最像警報器，極具威脅感
-            osc.type = 'square'; 
-            
-            // 讓音調在 0.6 秒內從 250Hz 低音瘋狂飆升到 1200Hz 高音，做出急促嚴重的警報拉哨感
-            osc.frequency.setValueAtTime(250, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.6);
-            
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.65);
+            gain.gain.setValueAtTime(0.08, startTime);
+            gain.gain.setValueAtTime(0.08, startTime + 0.35);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.4);
             
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.65);
-        } catch (e) {
-            console.log(e);
+            osc.start(startTime);
+            osc.stop(startTime + 0.4);
         }
     }
 
-    // 🔊 音效總控制器（全新升級版本）
+    // 🚨 Level 2 警報：高頻密集機槍音（持續約 4 秒）
+    function playLevel2Alert() {
+        initAudio();
+        var now = audioCtx.currentTime;
+        // 每 0.22 秒響一次，共響 18 次 ➔ 總長約 4 秒
+        for (var i = 0; i < 18; i++) {
+            var startTime = now + (i * 0.22);
+            
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            osc.type = 'triangle'; // 三角波聽起來帶有尖銳的數位感
+            osc.frequency.setValueAtTime(620, startTime);
+            
+            gain.gain.setValueAtTime(0.12, startTime);
+            gain.gain.setValueAtTime(0.12, startTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.12);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.12);
+        }
+    }
+
+    // 🚨 Level 3 警報：防空警報/核災級終極巨響拉哨音（持續整整 5 秒！）
+    function playLevel3Alert() {
+        try {
+            initAudio();
+            var now = audioCtx.currentTime;
+            var duration = 5.0; // 5秒
+
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            
+            osc.type = 'square'; // 方波威脅感與穿透力最強
+            
+            // 設定初始頻率
+            osc.frequency.setValueAtTime(350, now);
+            
+            // 在 5 秒內，音調像拉哨一樣上下劇烈震盪 4 個來回 (350Hz ➔ 950Hz ➔ 350Hz)
+            for (var t = 0; t <= duration; t += 0.6) {
+                if (t === 0) continue;
+                var targetFreq = (Math.round(t / 0.6) % 2 === 1) ? 950 : 350;
+                osc.frequency.linearRampToValueAtTime(targetFreq, now + t);
+            }
+            // 最後 0.2 秒平滑結尾
+            osc.frequency.linearRampToValueAtTime(300, now + duration);
+
+            // 音量控制：開頭淡入，結尾淡出
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.18, now + 0.3); // 快速淡入到最大音量
+            gain.gain.setValueAtTime(0.18, now + duration - 0.4);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration); // 結尾漸弱
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + duration);
+        } catch (e) { console.log(e); }
+    }
+
+    // 🔊 音效總控制器
     function triggerSound(mode, currentCount) {
         if (mode === 'good') {
-            // 👍 「乖」音效：清脆正能量的「叮！」
-            playTone(880, 'sine', 0.15, 0.1);
+            // 👍 「乖」音效：維持清脆一聲「叮！」
+            playTone(880, 'sine', 0.18, 0.12);
         } else {
-            // ⚠️ 「摘名」音效
+            // ⚠️ 「摘名」長音效階梯
             if (currentCount === 1) {
-                // 1次警告（黑色）：沉穩警告音「嗶」
-                playTone(350, 'sawtooth', 0.12, 0.1);
+                playLevel1Alert(); // Level 1 (3秒)
             } else if (currentCount === 2) {
-                // 2次警告（黃色）：急速三連音「嗶、嗶、嗶！」
-                playTone(550, 'sine', 0.06, 0.12);
-                setTimeout(function() { playTone(550, 'sine', 0.06, 0.12); }, 100);
-                setTimeout(function() { playTone(550, 'sine', 0.06, 0.12); }, 200);
+                playLevel2Alert(); // Level 2 (4秒)
             } else if (currentCount >= 3) {
-                // 3次最終記名（紅色）：核災級嚴肅飙高音警報！
-                playUrgentSiren();
+                playLevel3Alert(); // Level 3 終極版 (5秒)
             }
         }
     }
