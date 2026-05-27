@@ -1,399 +1,105 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr.Ng的摘名系統</title>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 15px;
-            background-color: #f0f2f5;
-            color: #333;
-        }
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-        h1 {
-            color: #1a73e8;
-            margin: 0;
-            font-size: 26px;
-        }
-        /* 清空按鈕樣式 */
-        .clear-all-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-        .clear-all-btn:hover {
-            background-color: #bd2130;
-        }
-        
-        /* 大框佈局 */
-        .main-box {
-            background: white;
-            border: 2px solid #ccc;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .good-box { border-left: 8px solid #28a745; }
-        .bad-box { border-left: 8px solid #dc3545; }
-        
-        .box-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .box-title {
-            font-size: 22px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .good-icon { color: #28a745; }
-        .bad-icon { color: #dc3545; }
-        
-        .add-btn {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: bold;
-        }
-        .add-btn:hover { background: #1557b0; }
-        
-        /* 結果顯示區 */
-        .result-display {
-            font-size: 18px;
-            min-height: 45px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* 可點擊取消的學號標籤 */
-        .clickable-tag {
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: all 0.2s;
-            display: inline-block;
-            font-weight: bold;
-        }
-        .clickable-tag:hover {
-            background-color: #ff0000 !important;
-            color: white !important;
-            text-decoration: line-through;
-        }
-
-        /* 彈出選號表 */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 450px;
-            text-align: center;
-        }
-        .student-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin: 20px 0;
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 5px;
-        }
-        .student-btn {
-            padding: 10px 5px;
-            font-size: 16px;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .student-btn:hover { background: #e2e6ea; }
-        .close-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        /* 狀態顏色定義 */
-        .status-good { color: #155724; background: #d4edda; border: 1px solid #c3e6cb; }
-        .status-black { color: #ffffff; background: #343a40; border: 1px solid #23272b; }
-        .status-yellow { color: #856404; background: #fff3cd; border: 1px solid #ffeeba; }
-        .status-red { color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; }
-
-        /* 歷史紀錄框 */
-        .history-box {
-            background: #e9ecef;
-            border: 2px dashed #999;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 30px;
-        }
-        .history-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        input[type="date"] {
-            padding: 8px;
-            font-size: 16px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-bottom: 15px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .history-list {
-            margin-top: 10px;
-            font-size: 18px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="header-container">
-        <h1>📋 Mr.Ng的摘名系統</h1>
-        <button class="clear-all-btn" onclick="clearTodayAll()">🧹 清空今日紀錄</button>
-    </div>
-
-    <div class="main-box good-box">
-        <div class="box-header">
-            <div class="box-title"><span class="good-icon">👍</span> 「乖」紀錄 (可多選)</div>
-            <button class="add-btn" onclick="openModal('good')">+ 登記表現好</button>
-        </div>
-        <div class="result-display" id="goodDisplay"></div>
-    </div>
-
-    <div class="main-box bad-box">
-        <div class="box-header">
-            <div class="box-title"><span class="bad-icon">⚠️</span> 「摘名」警告紀錄 (獨立累計顏色)</div>
-            <button class="add-btn" onclick="openModal('bad')">+ 登記摘名</button>
-        </div>
-        <div class="result-display" id="badDisplay"></div>
-    </div>
-
-    <div class="history-box">
-        <div class="history-title">🔍 歷史紀錄查詢</div>
-        <input type="date" id="historyDate" onchange="loadHistoryData()">
-        <div>
-            <strong>🚨 該日已滿 3 次警告(變紅色)的正式記名學生：</strong>
-            <div id="historyDisplay" class="history-list">請選擇日子...</div>
-        </div>
-    </div>
-
-    <div class="modal" id="numberModal">
-        <div class="modal-content">
-            <h3 id="modalTitle">請選取學號 (1-45)</h3>
-            <div class="student-grid" id="studentGrid"></div>
-            <button class="close-btn" onclick="closeModal()">關閉</button>
-        </div>
-    </div>
-
 <script>
-    let currentMode = ''; 
-    const todayStr = new Date().toISOString().split('T')[0];
+    let audioCtx = null;
 
-    // 初始化資料結構
-    let todayData = JSON.parse(localStorage.getItem('ngSystem_v2_' + todayStr)) || { good: [], bad: {} };
+    // 核心發聲函數：用程式碼動態產生音效
+    function playTone(frequency, type, duration) {
+        try {
+            // 瀏覽器安全限制：必須等使用者有互動（點擊）後才能啟動音訊
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = type; // 'sine', 'square', 'sawtooth', 'triangle'
+            oscillator.frequency.value = frequency; // 音調高低 (Hz)
+            
+            // 漸暗效果，讓聲音聽起來比較自然舒服
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+            console.log("暫不支援音訊自動播放");
+        }
+    }
 
+    // 1. 點擊學號方塊的輕快「嗶」聲
+    function playClickSound() {
+        playTone(600, 'sine', 0.08); 
+    }
+
+    // 2. 彈出未交名單時的「噔噔」警示音
+    function playAlertSound() {
+        playTone(300, 'triangle', 0.15);
+        setTimeout(() => {
+            playTone(220, 'triangle', 0.25);
+        }, 120);
+    }
+
+    // 網頁載入時，動態產生 1 到 38 號的大按鈕
     window.onload = function() {
-        document.getElementById('historyDate').value = todayStr;
-        renderTodayDisplay();
-        loadHistoryData();
+        const grid = document.getElementById('checkboxGrid');
+        for (let i = 1; i <= 38; i++) {
+            const item = document.createElement('div');
+            item.className = 'student-item';
+            item.innerHTML = `
+                <input type="checkbox" id="student_${i}" value="${i}" onchange="playClickSound()">
+                <label for="student_${i}" class="student-label">${i} 號</label>
+            `;
+            grid.appendChild(item);
+        }
     };
 
-    // 渲染主介面
-    function renderTodayDisplay() {
-        // 1. 渲染「乖」區域
-        const goodDisp = document.getElementById('goodDisplay');
-        if (todayData.good.length > 0) {
-            goodDisp.innerHTML = todayData.good.map((num, idx) => {
-                return `<span class="clickable-tag status-good" onclick="removeGood(${idx})" title="點擊取消紀錄">${num} 號</span>`;
-            }).join('');
-        } else {
-            goodDisp.innerHTML = `<span style="color:#999; font-style:italic;">今日暫無紀錄</span>`;
-        }
-
-        // 2. 渲染「摘名」區域
-        const badDisp = document.getElementById('badDisplay');
-        const badKeys = Object.keys(todayData.bad).filter(k => todayData.bad[k] > 0);
-        
-        if (badKeys.length > 0) {
-            badDisp.innerHTML = badKeys.map(num => {
-                const count = todayData.bad[num];
-                let colorClass = 'status-black';
-                let label = '1次警告';
-                
-                if (count === 2) { colorClass = 'status-yellow'; label = '2次警告'; }
-                if (count >= 3) { colorClass = 'status-red'; label = '最終記名'; }
-                
-                return `<span class="clickable-tag ${colorClass}" onclick="removeBad('${num}')" title="點擊扣減一次警告">${num} 號 (${label})</span>`;
-            }).join('');
-        } else {
-            badDisp.innerHTML = `<span style="color:#999; font-style:italic;">今日暫無摘名紀錄</span>`;
-        }
-    }
-
-    // 打開選擇彈窗
-    function openModal(mode) {
-        currentMode = mode;
-        const modal = document.getElementById('numberModal');
-        const title = document.getElementById('modalTitle');
-        const grid = document.getElementById('studentGrid');
-        grid.innerHTML = '';
-
-        title.innerText = mode === 'good' ? "👍 請選擇「乖」的學生學號" : "⚠️ 請選擇要「摘名」的學生學號";
-
-        for (let i = 1; i <= 45; i++) {
-            const btn = document.createElement('button');
-            btn.className = 'student-btn';
-            
-            if (mode === 'bad' && todayData.bad[i]) {
-                const currentCount = todayData.bad[i];
-                btn.innerText = `${i}號 (${currentCount}次)`;
-                if(currentCount >= 3) btn.style.color = 'red';
-            } else {
-                btn.innerText = i + '號';
-            }
-            
-            btn.onclick = () => selectNumber(i);
-            grid.appendChild(btn);
-        }
-
-        modal.style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('numberModal').style.display = 'none';
-    }
-
-    // 選取號碼後的處理邏輯
-    function selectNumber(num) {
-        if (currentMode === 'good') {
-            todayData.good.push(num);
-            todayData.good.sort((a, b) => a - b);
-        } else {
-            if (!todayData.bad[num]) {
-                todayData.bad[num] = 1;
-            } else {
-                todayData.bad[num] += 1;
+    // 🔍 Count 按鈕
+    function countUnchecked() {
+        let uncheckedNumbers = [];
+        for (let i = 1; i <= 38; i++) {
+            const cb = document.getElementById(`student_${i}`);
+            if (cb && !cb.checked) {
+                uncheckedNumbers.push(i + "號");
             }
         }
 
-        saveToLocalStorage();
-        renderTodayDisplay();
-        loadHistoryData();
-        closeModal();
-    }
+        const alertModal = document.getElementById('customAlert');
+        const displayZone = document.getElementById('unsubmittedDisplay');
 
-    // 【取消機制】取消「乖」的紀錄
-    function removeGood(idx) {
-        const num = todayData.good[idx];
-        if (confirm(`確定要取消 ${num} 號的「乖」紀錄嗎？`)) {
-            todayData.good.splice(idx, 1);
-            saveToLocalStorage();
-            renderTodayDisplay();
-        }
-    }
-
-    // 【取消機制】取消「摘名」紀錄
-    function removeBad(num) {
-        const currentCount = todayData.bad[num];
-        let statusStr = currentCount === 1 ? "第一次(黑色)" : currentCount === 2 ? "第二次(黃色)" : "第三次(紅色)";
-        
-        if (confirm(`確定要取消 ${num} 號的這一層 [${statusStr}] 摘名紀錄嗎？\n(確認後會退回上一個警告狀態)`)) {
-            todayData.bad[num] -= 1;
-            if (todayData.bad[num] <= 0) {
-                delete todayData.bad[num];
-            }
-            saveToLocalStorage();
-            renderTodayDisplay();
-            loadHistoryData();
-        }
-    }
-
-    // 🔥【全新功能】一鍵清空今日所有紀錄
-    function clearTodayAll() {
-        if (confirm("⚠️ 確定要完全清空今天的『乖』和『摘名』紀錄嗎？\n此操作會抹除今天的所有輸入，且無法復原！")) {
-            // 重設為空結構
-            todayData = { good: [], bad: {} };
-            saveToLocalStorage();
-            renderTodayDisplay();
-            loadHistoryData(); // 同步更新下方顯示
-            alert("🧹 今天的紀錄已全部清空！");
-        }
-    }
-
-    function saveToLocalStorage() {
-        localStorage.setItem('ngSystem_v2_' + todayStr, JSON.stringify(todayData));
-    }
-
-    // 歷史紀錄調取
-    function loadHistoryData() {
-        const targetDate = document.getElementById('historyDate').value;
-        const historyDisp = document.getElementById('historyDisplay');
-        
-        if (!targetDate) return;
-
-        const historyData = JSON.parse(localStorage.getItem('ngSystem_v2_' + targetDate));
-
-        if (historyData && historyData.bad) {
-            const redList = Object.keys(historyData.bad).filter(num => historyData.bad[num] >= 3);
-            
-            if (redList.length > 0) {
-                redList.sort((a, b) => a - b);
-                historyDisp.innerHTML = redList.map(num => {
-                    return `<span class="status-red" style="padding: 5px 12px; border-radius:6px; font-weight:bold;">🎓 ${num} 號</span>`;
-                }).join('');
-            } else {
-                historyDisp.innerHTML = `<span style="color: #6c757d; font-style: italic; font-size: 16px;">該日子沒有累積滿 3 次警告(紅色)的學生</span>`;
-            }
+        if (uncheckedNumbers.length === 0) {
+            displayZone.innerHTML = "🎉 全班已齊交！";
+            displayZone.style.color = "green";
+            displayZone.style.background = "#e6fffa";
+            displayZone.style.borderColor = "#b2f5ea";
+            playTone(880, 'sine', 0.1); // 齊交時播一個高音「叮」
         } else {
-            historyDisp.innerHTML = `<span style="color: #6c757d; font-style: italic; font-size: 16px;">該日子沒有任何紀錄</span>`;
+            displayZone.innerHTML = uncheckedNumbers.join(', ');
+            displayZone.style.color = "#c92a2a";
+            displayZone.style.background = "#fff5f5";
+            displayZone.style.borderColor = "#fab6b6";
+            playAlertSound(); // 播放警示音
+        }
+
+        alertModal.style.display = 'flex';
+    }
+
+    // 關閉紅色彈窗
+    function closeAlert() {
+        document.getElementById('customAlert').style.display = 'none';
+        playTone(400, 'sine', 0.05); // 關閉時輕響一下
+    }
+
+    // 🔄 Reset 按鈕
+    function resetAll() {
+        if (confirm("確定要重設所有格子，將它們變回未勾選狀態嗎？")) {
+            for (let i = 1; i <= 38; i++) {
+                const cb = document.getElementById(`student_${i}`);
+                if (cb) cb.checked = false;
+            }
+            playTone(150, 'sawtooth', 0.2); // 重設時發出一個低沉的「刷——」聲
         }
     }
 </script>
-
-</body>
-</html>
