@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr.Ng的摘名系統 - 最終修復版</title>
+    <title>Mr.Ng的摘名系統 - 聲效完美版</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -226,9 +226,53 @@
 <script>
     var currentMode = ''; 
     var todayStr = new Date().toISOString().split('T')[0];
-
-    // 初始化資料結構
     var todayData = JSON.parse(localStorage.getItem('ngSystem_v2_' + todayStr)) || { good: [], bad: {} };
+
+    // 音訊驅動引擎
+    var audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    // 發聲基礎通用函數
+    function playTone(frequency, type, duration, volume) {
+        try {
+            initAudio();
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = frequency;
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    // 🔊 音效控制器
+    function triggerSound(mode, currentCount) {
+        if (mode === 'good') {
+            // 「乖」音效：高亢清脆的叮一聲 (880Hz 正弦波)
+            playTone(880, 'sine', 0.15, 0.1);
+        } else {
+            // 「摘名」音效
+            if (currentCount >= 3) {
+                // 滿 3 次變紅：急速震驚的三連音 (嗶、嗶、嗶！)
+                playTone(500, 'square', 0.1, 0.15);
+                setTimeout(function() { playTone(500, 'square', 0.1, 0.15); }, 150);
+                setTimeout(function() { playTone(500, 'square', 0.2, 0.15); }, 300);
+            } else {
+                // 第 1, 2 次警告：沉穩的嗶聲 (350Hz 鋸齒波)
+                playTone(350, 'sawtooth', 0.12, 0.1);
+            }
+        }
+    }
 
     window.onload = function() {
         document.getElementById('historyDate').value = todayStr;
@@ -236,9 +280,7 @@
         loadHistoryData();
     };
 
-    // 渲染主介面
     function renderTodayDisplay() {
-        // 1. 渲染「乖」區域
         var goodDisp = document.getElementById('goodDisplay');
         if (todayData.good.length > 0) {
             goodDisp.innerHTML = todayData.good.map(function(num, idx) {
@@ -248,7 +290,6 @@
             goodDisp.innerHTML = '<span style="color:#999; font-style:italic;">今日暫無紀錄</span>';
         }
 
-        // 2. 渲染「摘名」區域
         var badDisp = document.getElementById('badDisplay');
         var badKeys = Object.keys(todayData.bad).filter(function(k) { return todayData.bad[k] > 0; });
         
@@ -268,7 +309,6 @@
         }
     }
 
-    // 打開選擇彈窗
     function openModal(mode) {
         currentMode = mode;
         var modal = document.getElementById('numberModal');
@@ -296,7 +336,6 @@
             
             grid.appendChild(btn);
         }
-
         modal.style.display = 'flex';
     }
 
@@ -304,8 +343,8 @@
         document.getElementById('numberModal').style.display = 'none';
     }
 
-    // 選取號碼後的處理邏輯
     function selectNumber(num) {
+        var finalCount = 0;
         if (currentMode === 'good') {
             todayData.good.push(num);
             todayData.good.sort(function(a, b) { return a - b; });
@@ -315,7 +354,11 @@
             } else {
                 todayData.bad[num] += 1;
             }
+            finalCount = todayData.bad[num];
         }
+
+        // 核心觸發點：選取完畢後，立刻播放對應音效
+        triggerSound(currentMode, finalCount);
 
         saveToLocalStorage();
         renderTodayDisplay();
@@ -323,17 +366,16 @@
         closeModal();
     }
 
-    // 【取消機制】取消「乖」的紀錄
     function removeGood(idx) {
         var num = todayData.good[idx];
         if (confirm('確定要取消 ' + num + ' 號的「乖」紀錄嗎？')) {
             todayData.good.splice(idx, 1);
+            playTone(200, 'sine', 0.1, 0.05); // 取消時發出輕微低音
             saveToLocalStorage();
             renderTodayDisplay();
         }
     }
 
-    // 【取消機制】取消「摘名」紀錄
     function removeBad(num) {
         var currentCount = todayData.bad[num];
         var statusStr = currentCount === 1 ? "第一次(黑色)" : currentCount === 2 ? "第二次(黃色)" : "第三次(紅色)";
@@ -343,16 +385,17 @@
             if (todayData.bad[num] <= 0) {
                 delete todayData.bad[num];
             }
+            playTone(200, 'sine', 0.1, 0.05); // 取消時發出輕微低音
             saveToLocalStorage();
             renderTodayDisplay();
             loadHistoryData();
         }
     }
 
-    // 一鍵清空今日所有紀錄
     function clearTodayAll() {
         if (confirm("⚠️ 確定要完全清空今天的『乖』和『摘名』紀錄嗎？\n此操作會抹除今天的所有輸入，且無法復原！")) {
             todayData = { good: [], bad: {} };
+            playTone(150, 'sawtooth', 0.2, 0.1); // 清空時發出一個大大的回饋音
             saveToLocalStorage();
             renderTodayDisplay();
             loadHistoryData();
@@ -364,7 +407,6 @@
         localStorage.setItem('ngSystem_v2_' + todayStr, JSON.stringify(todayData));
     }
 
-    // 歷史紀錄調取
     function loadHistoryData() {
         var targetDate = document.getElementById('historyDate').value;
         var historyDisp = document.getElementById('historyDisplay');
