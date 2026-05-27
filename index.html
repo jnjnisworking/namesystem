@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr.Ng的摘名系統 - 聲效完美版</title>
+    <title>Mr.Ng的摘名系統 - 終極音效版</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -185,11 +185,13 @@
 </head>
 <body>
 
+    <!-- 頂部標題與清空按鈕 -->
     <div class="header-container">
         <h1>📋 Mr.Ng的摘名系統</h1>
         <button class="clear-all-btn" onclick="clearTodayAll()">🧹 清空今日紀錄</button>
     </div>
 
+    <!-- 乖 大框 -->
     <div class="main-box good-box">
         <div class="box-header">
             <div class="box-title"><span class="good-icon">👍</span> 「乖」紀錄 (可多選)</div>
@@ -198,6 +200,7 @@
         <div class="result-display" id="goodDisplay"></div>
     </div>
 
+    <!-- 摘名 大框 -->
     <div class="main-box bad-box">
         <div class="box-header">
             <div class="box-title"><span class="bad-icon">⚠️</span> 「摘名」警告紀錄 (獨立累計顏色)</div>
@@ -206,6 +209,7 @@
         <div class="result-display" id="badDisplay"></div>
     </div>
 
+    <!-- 歷史紀錄小框 -->
     <div class="history-box">
         <div class="history-title">🔍 歷史紀錄查詢</div>
         <input type="date" id="historyDate" onchange="loadHistoryData()">
@@ -215,6 +219,7 @@
         </div>
     </div>
 
+    <!-- 彈出選號表 -->
     <div class="modal" id="numberModal">
         <div class="modal-content">
             <h3 id="modalTitle">請選取學號 (1-45)</h3>
@@ -228,7 +233,6 @@
     var todayStr = new Date().toISOString().split('T')[0];
     var todayData = JSON.parse(localStorage.getItem('ngSystem_v2_' + todayStr)) || { good: [], bad: {} };
 
-    // 音訊驅動引擎
     var audioCtx = null;
     function initAudio() {
         if (!audioCtx) {
@@ -255,21 +259,50 @@
         }
     }
 
-    // 🔊 音效控制器
+    // 🚨 專為第 3 次變紅設計的「極度緊急拉哨警報聲」
+    function playUrgentSiren() {
+        try {
+            initAudio();
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            
+            // 使用 square (方波) 聽起來最像警報器，極具威脅感
+            osc.type = 'square'; 
+            
+            // 讓音調在 0.6 秒內從 250Hz 低音瘋狂飆升到 1200Hz 高音，做出急促嚴重的警報拉哨感
+            osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.6);
+            
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.65);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.65);
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    // 🔊 音效總控制器（全新升級版本）
     function triggerSound(mode, currentCount) {
         if (mode === 'good') {
-            // 「乖」音效：高亢清脆的叮一聲 (880Hz 正弦波)
+            // 👍 「乖」音效：清脆正能量的「叮！」
             playTone(880, 'sine', 0.15, 0.1);
         } else {
-            // 「摘名」音效
-            if (currentCount >= 3) {
-                // 滿 3 次變紅：急速震驚的三連音 (嗶、嗶、嗶！)
-                playTone(500, 'square', 0.1, 0.15);
-                setTimeout(function() { playTone(500, 'square', 0.1, 0.15); }, 150);
-                setTimeout(function() { playTone(500, 'square', 0.2, 0.15); }, 300);
-            } else {
-                // 第 1, 2 次警告：沉穩的嗶聲 (350Hz 鋸齒波)
+            // ⚠️ 「摘名」音效
+            if (currentCount === 1) {
+                // 1次警告（黑色）：沉穩警告音「嗶」
                 playTone(350, 'sawtooth', 0.12, 0.1);
+            } else if (currentCount === 2) {
+                // 2次警告（黃色）：急速三連音「嗶、嗶、嗶！」
+                playTone(550, 'sine', 0.06, 0.12);
+                setTimeout(function() { playTone(550, 'sine', 0.06, 0.12); }, 100);
+                setTimeout(function() { playTone(550, 'sine', 0.06, 0.12); }, 200);
+            } else if (currentCount >= 3) {
+                // 3次最終記名（紅色）：核災級嚴肅飙高音警報！
+                playUrgentSiren();
             }
         }
     }
@@ -357,7 +390,7 @@
             finalCount = todayData.bad[num];
         }
 
-        // 核心觸發點：選取完畢後，立刻播放對應音效
+        // 播音核心
         triggerSound(currentMode, finalCount);
 
         saveToLocalStorage();
@@ -370,7 +403,7 @@
         var num = todayData.good[idx];
         if (confirm('確定要取消 ' + num + ' 號的「乖」紀錄嗎？')) {
             todayData.good.splice(idx, 1);
-            playTone(200, 'sine', 0.1, 0.05); // 取消時發出輕微低音
+            playTone(200, 'sine', 0.1, 0.05);
             saveToLocalStorage();
             renderTodayDisplay();
         }
@@ -385,7 +418,7 @@
             if (todayData.bad[num] <= 0) {
                 delete todayData.bad[num];
             }
-            playTone(200, 'sine', 0.1, 0.05); // 取消時發出輕微低音
+            playTone(200, 'sine', 0.1, 0.05);
             saveToLocalStorage();
             renderTodayDisplay();
             loadHistoryData();
@@ -395,7 +428,7 @@
     function clearTodayAll() {
         if (confirm("⚠️ 確定要完全清空今天的『乖』和『摘名』紀錄嗎？\n此操作會抹除今天的所有輸入，且無法復原！")) {
             todayData = { good: [], bad: {} };
-            playTone(150, 'sawtooth', 0.2, 0.1); // 清空時發出一個大大的回饋音
+            playTone(150, 'sawtooth', 0.2, 0.1);
             saveToLocalStorage();
             renderTodayDisplay();
             loadHistoryData();
