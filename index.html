@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr.Ng的摘名系統 - 最終完美音效版</title>
+    <title>Mr.Ng的摘名系統 - 實戰優化版</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -152,35 +152,6 @@
         .status-black { color: #ffffff; background: #343a40; border: 1px solid #23272b; }
         .status-yellow { color: #856404; background: #fff3cd; border: 1px solid #ffeeba; }
         .status-red { color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb; }
-
-        .history-box {
-            background: #e9ecef;
-            border: 2px dashed #999;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 30px;
-        }
-        .history-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        input[type="date"] {
-            padding: 8px;
-            font-size: 16px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-bottom: 15px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .history-list {
-            margin-top: 10px;
-            font-size: 18px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
     </style>
 </head>
 <body>
@@ -203,20 +174,10 @@
     <!-- 摘名 大框 -->
     <div class="main-box bad-box">
         <div class="box-header">
-            <div class="box-title"><span class="bad-icon">⚠️</span> 「摘名」警告紀錄 (獨立累計顏色)</div>
+            <div class="box-title"><span class="bad-icon">⚠️</span> 「摘名」警告紀錄</div>
             <button class="add-btn" onclick="openModal('bad')">+ 登記摘名</button>
         </div>
         <div class="result-display" id="badDisplay"></div>
-    </div>
-
-    <!-- 歷史紀錄小框 -->
-    <div class="history-box">
-        <div class="history-title">🔍 歷史紀錄查詢</div>
-        <input type="date" id="historyDate" onchange="loadHistoryData()">
-        <div>
-            <strong>🚨 該日已滿 3 次警告(變紅色)的正式記名學生：</strong>
-            <div id="historyDisplay" class="history-list">請選擇日子...</div>
-        </div>
     </div>
 
     <!-- 彈出選號表 -->
@@ -231,7 +192,12 @@
 <script>
     var currentMode = ''; 
     var todayStr = new Date().toISOString().split('T')[0];
-    var todayData = JSON.parse(localStorage.getItem('ngSystem_v2_' + todayStr)) || { good: [], bad: {} };
+    // 為了安全相容舊資料結構，若發現舊的 good 是陣列，自動初始化為物件
+    var rawData = JSON.parse(localStorage.getItem('ngSystem_v3_' + todayStr));
+    if (!rawData || Array.isArray(rawData.good)) {
+        rawData = { good: {}, bad: {} };
+    }
+    var todayData = rawData;
 
     var audioCtx = null;
     function initAudio() {
@@ -257,7 +223,7 @@
         } catch (e) { console.log(e); }
     }
 
-    // 🚨 Level 1 警報：恢復原本威嚴的低沉雙音交替（持續約 3 秒）
+    // 🚨 Level 1 警報：低沉雙音交替（持續約 3 秒）
     function playLevel1Alert() {
         initAudio();
         var now = audioCtx.currentTime;
@@ -279,7 +245,7 @@
         }
     }
 
-    // 🚨 Level 2 警報：恢復原本威嚴的高頻密集機槍音（持續約 4 秒）
+    // 🚨 Level 2 警報：高頻密集機槍音（持續約 4 秒）
     function playLevel2Alert() {
         initAudio();
         var now = audioCtx.currentTime;
@@ -301,16 +267,13 @@
         }
     }
 
-    // 🚨 Level 3 警報：僅修改這裡！換成斯文、正式的「叮咚雙音廣播」循環（持續約 4-5 秒）
+    // 🚨 Level 3 起 警報：斯文、正式的「叮咚雙音廣播」循環（持續約 4-5 秒）
     function playLevel3Alert() {
         initAudio();
         var now = audioCtx.currentTime;
-        
-        // 循環播放 3 次叮咚（間隔 1.3 秒，總共約 4.2 秒）
         for (var i = 0; i < 3; i++) {
             var baseTime = now + (i * 1.3);
             
-            // 「叮」高音
             var oscHigh = audioCtx.createOscillator();
             var gainHigh = audioCtx.createGain();
             oscHigh.type = 'sine';
@@ -322,7 +285,6 @@
             oscHigh.start(baseTime);
             oscHigh.stop(baseTime + 0.4);
             
-            // 「咚」低音
             var oscLow = audioCtx.createOscillator();
             var gainLow = audioCtx.createGain();
             oscLow.type = 'sine';
@@ -336,50 +298,59 @@
         }
     }
 
-    // 🔊 音效總控制器
+    // 🔊 音效控制器
     function triggerSound(mode, currentCount) {
         if (mode === 'good') {
-            // 👍 「乖」音效：清脆一聲「叮！」
             playTone(880, 'sine', 0.18, 0.12);
         } else {
-            // ⚠️ 「摘名」長音效階梯
             if (currentCount === 1) {
-                playLevel1Alert(); // 原本的第1次警告 (3秒)
+                playLevel1Alert();
             } else if (currentCount === 2) {
-                playLevel2Alert(); // 原本的第2次警告 (4秒)
+                playLevel2Alert();
             } else if (currentCount >= 3) {
-                playLevel3Alert(); // 全新斯文提示音的第3次記名 (4.5秒)
+                playLevel3Alert(); // 3次以上全都是叮咚廣播音
             }
         }
     }
 
     window.onload = function() {
-        document.getElementById('historyDate').value = todayStr;
         renderTodayDisplay();
-        loadHistoryData();
     };
 
     function renderTodayDisplay() {
+        // 1. 渲染「乖」看板
         var goodDisp = document.getElementById('goodDisplay');
-        if (todayData.good.length > 0) {
-            goodDisp.innerHTML = todayData.good.map(function(num, idx) {
-                return '<span class="clickable-tag status-good" onclick="removeGood(' + idx + ')" title="點擊取消紀錄">' + num + ' 號</span>';
+        var goodKeys = Object.keys(todayData.good).filter(function(k) { return todayData.good[k] > 0; });
+        
+        if (goodKeys.length > 0) {
+            goodKeys.sort(function(a, b) { return a - b; });
+            goodDisp.innerHTML = goodKeys.map(function(num) {
+                var count = todayData.good[num];
+                var countLabel = count > 1 ? ' (' + count + '次)' : '';
+                return '<span class="clickable-tag status-good" onclick="removeGood(\'' + num + '\')" title="點擊扣減一次">' + num + ' 號' + countLabel + '</span>';
             }).join('');
         } else {
             goodDisp.innerHTML = '<span style="color:#999; font-style:italic;">今日暫無紀錄</span>';
         }
 
+        // 2. 渲染「摘名」看板
         var badDisp = document.getElementById('badDisplay');
         var badKeys = Object.keys(todayData.bad).filter(function(k) { return todayData.bad[k] > 0; });
         
         if (badKeys.length > 0) {
+            badKeys.sort(function(a, b) { return a - b; });
             badDisp.innerHTML = badKeys.map(function(num) {
                 var count = todayData.bad[num];
                 var colorClass = 'status-black';
                 var label = '1次警告';
                 
-                if (count === 2) { colorClass = 'status-yellow'; label = '2次警告'; }
-                if (count >= 3) { colorClass = 'status-red'; label = '最終記名'; }
+                if (count === 2) { 
+                    colorClass = 'status-yellow'; 
+                    label = '2次警告'; 
+                } else if (count >= 3) { 
+                    colorClass = 'status-red'; 
+                    label = '正式摘名 ' + (count - 2) + '次'; 
+                }
                 
                 return '<span class="clickable-tag ' + colorClass + '" onclick="removeBad(\'' + num + '\')" title="點擊扣減一次警告">' + num + ' 號 (' + label + ')</span>';
             }).join('');
@@ -401,10 +372,17 @@
             var btn = document.createElement('button');
             btn.className = 'student-btn';
             
-            if (mode === 'bad' && todayData.bad[i]) {
+            if (mode === 'good' && todayData.good[i]) {
+                btn.innerText = i + '號 (' + todayData.good[i] + '次)';
+                btn.style.color = 'green';
+            } else if (mode === 'bad' && todayData.bad[i]) {
                 var currentCount = todayData.bad[i];
-                btn.innerText = i + '號 (' + currentCount + '次)';
-                if(currentCount >= 3) btn.style.color = 'red';
+                if (currentCount === 1) btn.innerText = i + '號 (1次)';
+                if (currentCount === 2) btn.innerText = i + '號 (2次)';
+                if (currentCount >= 3) {
+                    btn.innerText = i + '號 (摘' + (currentCount - 2) + '次)';
+                    btn.style.color = 'red';
+                }
             } else {
                 btn.innerText = i + '號';
             }
@@ -425,8 +403,12 @@
     function selectNumber(num) {
         var finalCount = 0;
         if (currentMode === 'good') {
-            todayData.good.push(num);
-            todayData.good.sort(function(a, b) { return a - b; });
+            if (!todayData.good[num]) {
+                todayData.good[num] = 1;
+            } else {
+                todayData.good[num] += 1;
+            }
+            finalCount = todayData.good[num];
         } else {
             if (!todayData.bad[num]) {
                 todayData.bad[num] = 1;
@@ -436,19 +418,19 @@
             finalCount = todayData.bad[num];
         }
 
-        // 播音核心
         triggerSound(currentMode, finalCount);
-
         saveToLocalStorage();
         renderTodayDisplay();
-        loadHistoryData();
         closeModal();
     }
 
-    function removeGood(idx) {
-        var num = todayData.good[idx];
-        if (confirm('確定要取消 ' + num + ' 號的「乖」紀錄嗎？')) {
-            todayData.good.splice(idx, 1);
+    function removeGood(num) {
+        var currentCount = todayData.good[num];
+        if (confirm('確定要取消 ' + num + ' 號的一層「乖」紀錄嗎？')) {
+            todayData.good[num] -= 1;
+            if (todayData.good[num] <= 0) {
+                delete todayData.good[num];
+            }
             playTone(200, 'sine', 0.1, 0.05);
             saveToLocalStorage();
             renderTodayDisplay();
@@ -457,9 +439,9 @@
 
     function removeBad(num) {
         var currentCount = todayData.bad[num];
-        var statusStr = currentCount === 1 ? "第一次(黑色)" : currentCount === 2 ? "第二次(黃色)" : "第三次(紅色)";
+        var statusStr = currentCount === 1 ? "1次警告" : currentCount === 2 ? "2次警告" : "正式摘名 " + (currentCount - 2) + "次";
         
-        if (confirm('確定要取消 ' + num + ' 號的這一層 [' + statusStr + '] 摘名紀錄嗎？\n(確認後會退回上一個警告狀態)')) {
+        if (confirm('確定要扣減 ' + num + ' 號的 [' + statusStr + '] 紀錄嗎？\n(確認後會退回上一層狀態)')) {
             todayData.bad[num] -= 1;
             if (todayData.bad[num] <= 0) {
                 delete todayData.bad[num];
@@ -467,47 +449,21 @@
             playTone(200, 'sine', 0.1, 0.05);
             saveToLocalStorage();
             renderTodayDisplay();
-            loadHistoryData();
         }
     }
 
     function clearTodayAll() {
-        if (confirm("⚠️ 確定要完全清空今天的『乖』和『摘名』紀錄嗎？\n此操作會抹除今天的所有輸入，且無法復原！")) {
-            todayData = { good: [], bad: {} };
+        if (confirm("⚠️ 確定要完全清空今天的『乖』和『摘名』紀錄嗎？\n此操作會抹除所有數據，且無法復原！")) {
+            todayData = { good: {}, bad: {} };
             playTone(150, 'sawtooth', 0.2, 0.1);
             saveToLocalStorage();
             renderTodayDisplay();
-            loadHistoryData();
             alert("🧹 今天的紀錄已全部清空！");
         }
     }
 
     function saveToLocalStorage() {
-        localStorage.setItem('ngSystem_v2_' + todayStr, JSON.stringify(todayData));
-    }
-
-    function loadHistoryData() {
-        var targetDate = document.getElementById('historyDate').value;
-        var historyDisp = document.getElementById('historyDisplay');
-        
-        if (!targetDate) return;
-
-        var historyData = JSON.parse(localStorage.getItem('ngSystem_v2_' + targetDate));
-
-        if (historyData && historyData.bad) {
-            var redList = Object.keys(historyData.bad).filter(function(num) { return historyData.bad[num] >= 3; });
-            
-            if (redList.length > 0) {
-                redList.sort(function(a, b) { return a - b; });
-                historyDisp.innerHTML = redList.map(function(num) {
-                    return '<span class="status-red" style="padding: 5px 12px; border-radius:6px; font-weight:bold;">🎓 ' + num + ' 號</span>';
-                }).join('');
-            } else {
-                historyDisp.innerHTML = '<span style="color: #6c757d; font-style: italic; font-size: 16px;">該日子沒有累積滿 3 次警告(紅色)的學生</span>';
-            }
-        } else {
-            historyDisp.innerHTML = '<span style="color: #6c757d; font-style: italic; font-size: 16px;">該日子沒有任何紀錄</span>';
-        }
+        localStorage.setItem('ngSystem_v3_' + todayStr, JSON.stringify(todayData));
     }
 </script>
 
